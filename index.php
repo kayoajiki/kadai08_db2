@@ -1,12 +1,17 @@
+<?php
+include('db.php');
+$sql = "SELECT * FROM tb_new";
+$stmt = $pdo->prepare($sql);
+$stmt->execute();
+$results = $stmt->fetchAll();
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>NY Travel Bookmark</title>
-
-  <!-- Google Fonts -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- モバイル最適化 -->
+  <title>World Travel Bookmark</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Playfair+Display&display=swap" rel="stylesheet">
-
   <style>
     body {
       margin: 0;
@@ -18,73 +23,49 @@
     h1 {
       font-family: 'Playfair Display', serif;
       text-align: center;
-      font-size: 2.5em;
+      font-size: 2em;
       color: #f0c929;
-      margin: 1.2em 0 0.5em;
+      margin: 1em 0 0.5em;
     }
 
     #map {
       width: 100%;
-      height: 500px;
+      height: 60vh; /* モバイルでも見やすく */
     }
 
     .form-container {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 20px 30px;
-      margin: 30px auto;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      margin: 20px auto;
+      width: 90%;
       max-width: 600px;
       border-radius: 12px;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
 
-    .form-container form {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .form-group label {
-      font-size: 0.95em;
-      color: #f0c929;
-      font-weight: 600;
-    }
-
-    .form-group input,
-    .form-group select {
-      padding: 10px;
+    form input, form select {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
       border: none;
       border-radius: 6px;
-      background: rgba(255, 255, 255, 0.9);
-      color: #333;
       font-size: 1em;
-      transition: box-shadow 0.2s;
+      box-sizing: border-box;
     }
 
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px #f0c92988;
-    }
-
-    button {
+    form button {
       background: #f0c929;
       color: #1a1a2e;
       border: none;
       padding: 14px;
       border-radius: 6px;
       font-weight: bold;
-      font-size: 1em;
       cursor: pointer;
-      transition: all 0.3s ease;
+      width: 100%;
+      font-size: 1.12em;
     }
 
-    button:hover {
+    form button:hover {
       background: #fff;
       color: #1a1a2e;
     }
@@ -96,7 +77,7 @@
 
     .nav-links a {
       color: #f0c929;
-      margin: 0 15px;
+      margin: 0 10px;
       text-decoration: none;
       font-weight: bold;
     }
@@ -105,135 +86,120 @@
       text-decoration: underline;
     }
 
-    #toast {
-      display: none;
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #f0c929;
-      color: #1a1a2e;
-      padding: 15px 20px;
-      border-radius: 8px;
-      font-weight: bold;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      z-index: 9999;
-      transition: opacity 0.5s ease-in-out;
-    }
-
     #pac-input {
+      margin: 10px;
+      padding: 10px;
+      width: 80%;
+      max-width: 300px;
+      font-size: 1em;
+      border: none;
+      border-radius: 6px;
+      outline: none;
+      background-color: #fff;
+      color: #000;
       position: absolute;
       top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 300px;
-      padding: 10px;
-      z-index: 1000;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      font-size: 14px;
+      left: 10px;
+      z-index: 5;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5em;
+      }
+      #pac-input {
+        width: 90%;
+        left: 5%;
+        font-size: 0.95em;
+      }
     }
   </style>
 </head>
 <body>
+  <input id="pac-input" type="text" placeholder="スポットを検索">
 
-  <!-- 検索バー -->
-  <input id="pac-input" class="controls" type="text" placeholder="NYスポットを検索">
-
-  <h1>🗽 NY Travel Bookmark</h1>
+  <h1>🌏 World Travel Bookmark</h1>
   <div id="map"></div>
 
-  <!-- フォーム -->
   <div class="form-container">
-    <form id="bookmarkForm">
-      <div class="form-group">
-        <label for="name">地名</label>
-        <input type="text" name="name" id="name" required>
-      </div>
-
-      <div class="form-group">
-        <label for="lat">緯度</label>
-        <input type="text" name="lat" id="lat" readonly>
-      </div>
-
-      <div class="form-group">
-        <label for="lng">経度</label>
-        <input type="text" name="lng" id="lng" readonly>
-      </div>
-
-      <div class="form-group">
-        <label for="status">区分</label>
-        <select name="status" id="status">
-          <option value="行きたい">行きたい</option>
-          <option value="行った">行った</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="comment">コメント</label>
-        <input type="text" name="comment" id="comment">
-      </div>
-
-      <button type="submit" id="submitBtn">📍 登録する</button>
+    <form method="post" action="insert.php">
+      地名：<input type="text" name="name" required>
+      緯度：<input type="text" name="lat" id="lat" readonly required>
+      経度：<input type="text" name="lng" id="lng" readonly required>
+      区分：
+      <select name="status">
+        <option value="行きたい">行きたい</option>
+        <option value="行った">行った</option>
+      </select>
+      コメント：<input type="text" name="comment">
+      <button type="submit">📍 登録する</button>
     </form>
   </div>
 
-  <!-- 一覧ボタン -->
   <div class="nav-links">
     <a href="list.php">📄 一覧を見る</a>
   </div>
 
-  <!-- トースト通知 -->
-  <div id="toast">✔️ 保存しました！</div>
-
-  <!-- JS読み込み -->
-  <script src="map.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=●●●&libraries=places&callback=initMap" async defer></script>
-
-  <!-- 登録処理 + トースト -->
   <script>
-    document.getElementById("bookmarkForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-
-      const form = e.target;
-      const formData = new FormData(form);
-      const button = document.getElementById("submitBtn");
-
-      fetch("insert.php", {
-        method: "POST",
-        body: formData
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          showToast("✔️ 保存しました！");
-          button.innerText = "✔️ 登録完了！";
-          button.style.background = "#4caf50";
-
-          setTimeout(() => {
-            button.innerText = "📍 登録する";
-            button.style.background = "#f0c929";
-            form.reset();
-          }, 3000);
-        } else {
-          showToast("⚠️ エラーが発生しました");
-        }
-      })
-      .catch(() => {
-        showToast("⚠️ 通信エラー");
+    function initMap() {
+      const ny = { lat: 40.7128, lng: -74.0060 };
+      const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 12,
+        center: ny
       });
-    });
 
-    function showToast(msg) {
-      const toast = document.getElementById("toast");
-      toast.innerText = msg;
-      toast.style.display = "block";
-      toast.style.opacity = 1;
+      map.addListener("click", (e) => {
+        document.getElementById("lat").value = e.latLng.lat().toFixed(6);
+        document.getElementById("lng").value = e.latLng.lng().toFixed(6);
+      });
 
-      setTimeout(() => {
-        toast.style.opacity = 0;
-        setTimeout(() => toast.style.display = "none", 500);
-      }, 3000);
+      const input = document.getElementById("pac-input");
+      const searchBox = new google.maps.places.SearchBox(input);
+      map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+      map.addListener("bounds_changed", () => {
+        searchBox.setBounds(map.getBounds());
+      });
+
+      searchBox.addListener("places_changed", () => {
+        const places = searchBox.getPlaces();
+        if (places.length === 0) return;
+
+        const bounds = new google.maps.LatLngBounds();
+
+        places.forEach((place) => {
+          if (!place.geometry || !place.geometry.location) return;
+
+          bounds.extend(place.geometry.location);
+          map.setCenter(place.geometry.location);
+          map.setZoom(15);
+        });
+
+        map.fitBounds(bounds);
+      });
+
+      // DBのマーカーを表示
+      const locations = <?= json_encode($results, JSON_UNESCAPED_UNICODE); ?>;
+
+      locations.forEach((item) => {
+        const marker = new google.maps.Marker({
+          position: { lat: parseFloat(item.lat), lng: parseFloat(item.lng) },
+          map,
+          title: item.name
+        });
+
+        const infowindow = new google.maps.InfoWindow({
+          content: `<strong>${item.name}</strong><br>${item.comment}`
+        });
+
+        marker.addListener("click", () => {
+          infowindow.open(map, marker);
+        });
+      });
     }
   </script>
+
+  <!-- Google Maps API 読み込み（Placesライブラリ込み） -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=●●●&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>
